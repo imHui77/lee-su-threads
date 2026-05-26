@@ -223,5 +223,17 @@
   },
   "clearing": {
     "message": "지우는 중..."
+  },
+  "hideNewUsersLabel": {
+    "message": "신규 사용자 숨기기"
+  },
+  "hideLocationTitle": {
+    "message": "이 지역의 게시물 숨기기"
+  },
+  "unhideLocationTitle": {
+    "message": "이 지역의 게시물 다시 표시"
+  },
+  "hideLocationAria": {
+    "message": "지역 숨기기 전환"
   }
 }

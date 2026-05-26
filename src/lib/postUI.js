@@ -1,6 +1,8 @@
 // Post UI functions for displaying profile info on Threads posts
 import { isNewUser } from './dateParser.js';
 import { formatLocation } from './locationMapper.js';
+import { shouldHideProfile, hideContainer } from './profileFilter.js';
+import { findPostContainer } from './domHelpers.js';
 
 // Cross-browser compatibility
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
@@ -16,8 +18,21 @@ export async function displayProfileInfo(profileInfo, profileCache) {
   // Find all fetch buttons for this user
   const postButtons = document.querySelectorAll(`.threads-fetch-btn[data-username="${username}"]`);
 
+  const filterHit = await shouldHideProfile(profileInfo);
+
   // Handle post-style buttons
   for (const btn of postButtons) {
+    // If this profile is filtered out, hide its post container and skip badge insertion
+    if (filterHit) {
+      const container =
+        findPostContainer(btn) ||
+        btn.closest('[data-pressable-container="true"]') ||
+        btn.closest('[role="article"]');
+      if (container) hideContainer(container);
+      btn.style.display = 'none';
+      continue;
+    }
+
     // Check if we already added a badge next to this button
     if (btn.previousElementSibling?.classList?.contains('threads-profile-info-badge')) continue;
 

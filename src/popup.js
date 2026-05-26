@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const autoQueryToggle = document.getElementById('autoQueryToggle');
   const autoQueryFollowersToggle = document.getElementById('autoQueryFollowersToggle');
   const showFlagsToggle = document.getElementById('showFlagsToggle');
+  const hideNewUsersToggle = document.getElementById('hideNewUsersToggle');
   const locationFilter = document.getElementById('locationFilter');
   const onboardingLink = document.getElementById('onboardingLink');
   const tabBtns = document.querySelectorAll('.tab-btn');
@@ -129,12 +130,14 @@ document.addEventListener('DOMContentLoaded', () => {
     autoQueryToggle.disabled = true;
     autoQueryFollowersToggle.disabled = true;
     showFlagsToggle.disabled = true;
+    hideNewUsersToggle.disabled = true;
   }
 
   function enableAllToggles() {
     autoQueryToggle.disabled = false;
     autoQueryFollowersToggle.disabled = false;
     showFlagsToggle.disabled = false;
+    hideNewUsersToggle.disabled = false;
   }
 
   // Detect if we should use sheet modal for emoji picker
@@ -277,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'autoQueryEnabled',
     'autoQueryFollowersEnabled',
     'showFlags',
+    'hideNewUsers',
     'rateLimitedUntil'
   ]).then((result) => {
     // Check if currently rate limited
@@ -291,6 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
     autoQueryToggle.checked = result.autoQueryEnabled !== false;
     autoQueryFollowersToggle.checked = result.autoQueryFollowersEnabled === true;
     showFlagsToggle.checked = result.showFlags !== false;
+    hideNewUsersToggle.checked = result.hideNewUsers === true;
   });
 
   // Additional toggle change event listeners
@@ -315,6 +320,19 @@ document.addEventListener('DOMContentLoaded', () => {
           // Content script not loaded yet - that's ok
         });
       }
+    });
+  });
+
+  hideNewUsersToggle.addEventListener('change', () => {
+    const enabled = hideNewUsersToggle.checked;
+    browserAPI.storage.local.set({ hideNewUsers: enabled });
+    // Notify all Threads tabs so they can apply/remove hiding immediately
+    browserAPI.tabs.query({ url: 'https://www.threads.com/*' }).then((tabs) => {
+      tabs.forEach((tab) => {
+        browserAPI.tabs.sendMessage(tab.id, { type: 'HIDE_FILTER_CHANGED' }).catch(() => {
+          // Content script not loaded - ignore
+        });
+      });
     });
   });
 
@@ -830,10 +848,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Save hidden location toggle, then notify content scripts
+  async function setLocationHidden(location, hidden) {
+    const { hiddenLocations = {} } = await browserAPI.storage.local.get(['hiddenLocations']);
+    if (hidden) {
+      hiddenLocations[location] = true;
+    } else {
+      delete hiddenLocations[location];
+    }
+    await browserAPI.storage.local.set({ hiddenLocations });
+
+    browserAPI.tabs.query({ url: 'https://www.threads.com/*' }).then((tabs) => {
+      tabs.forEach((tab) => {
+        browserAPI.tabs.sendMessage(tab.id, { type: 'HIDE_FILTER_CHANGED' }).catch(() => {
+          // ignore
+        });
+      });
+    });
+  }
+
   // Render location stats
   async function renderLocationStats() {
-    // Get custom emojis
-    const { customLocationEmojis = {} } = await browserAPI.storage.local.get(['customLocationEmojis']);
+    // Get custom emojis and hidden locations
+    const { customLocationEmojis = {}, hiddenLocations = {} } = await browserAPI.storage.local.get(
+      ['customLocationEmojis', 'hiddenLocations']
+    );
 
     const entries = Object.entries(profiles);
 
@@ -943,7 +982,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const customEmoji = customLocationEmojis[location] || '';
 
       const item = document.createElement('div');
-      item.className = 'location-stat-item';
+      const isLocHidden = !!hiddenLocations[location];
+      item.className = 'location-stat-item' + (isLocHidden ? ' is-hidden-loc' : '');
       item.setAttribute('data-location', location);
 
       const locationInfo = document.createElement('div');
@@ -1088,12 +1128,36 @@ document.addEventListener('DOMContentLoaded', () => {
       emojiCustomizer.appendChild(emojiPickerBtn);
       emojiCustomizer.appendChild(resetBtn);
 
+      // Hide-location toggle
+      const hideBtn = document.createElement('button');
+      hideBtn.className = 'location-hide-btn' + (isLocHidden ? ' is-active' : '');
+      hideBtn.textContent = '🚫';
+      hideBtn.setAttribute(
+        'aria-label',
+        `${browserAPI.i18n.getMessage('hideLocationAria') || 'Toggle hide location'} ${location}`
+      );
+      hideBtn.title = isLocHidden
+        ? (browserAPI.i18n.getMessage('unhideLocationTitle') || 'Click to unhide posts from this location')
+        : (browserAPI.i18n.getMessage('hideLocationTitle') || 'Click to hide posts from this location');
+
+      hideBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const nowHidden = !item.classList.contains('is-hidden-loc');
+        item.classList.toggle('is-hidden-loc', nowHidden);
+        hideBtn.classList.toggle('is-active', nowHidden);
+        hideBtn.title = nowHidden
+          ? (browserAPI.i18n.getMessage('unhideLocationTitle') || 'Click to unhide posts from this location')
+          : (browserAPI.i18n.getMessage('hideLocationTitle') || 'Click to hide posts from this location');
+        await setLocationHidden(location, nowHidden);
+      });
+
       const countSpan = document.createElement('span');
       countSpan.className = 'location-count';
       countSpan.textContent = count;
 
       item.appendChild(locationInfo);
       item.appendChild(emojiCustomizer);
+      item.appendChild(hideBtn);
       item.appendChild(countSpan);
 
       locationStatsListEl.appendChild(item);

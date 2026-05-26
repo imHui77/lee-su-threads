@@ -7,6 +7,7 @@ import { fetchProfileByUserId, getUserIdByUsername, updateButtonWithFetchResult 
 import { showRateLimitToast, showLoginRequiredBanner } from './lib/notifications.js';
 import { queueFetch, processFetchQueue, processFollowersFetchQueue } from './lib/queueManager.js';
 import { createFeedVisibilityObserver, createFollowersVisibilityObserver } from './lib/autoFetchObservers.js';
+import { getFilterSettings, shouldHideProfile, hideContainer, unhideAllContainers } from './lib/profileFilter.js';
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill';
 
 'use strict';
@@ -308,6 +309,12 @@ function addFetchButtons() {
     // If we have cached data for this user, display badge directly without creating button
     if (profileCache.has(username)) {
       const profileInfo = profileCache.get(username);
+
+      // Hide whole post/user row if it matches the user's filter settings
+      if (await shouldHideProfile(profileInfo)) {
+        hideContainer(postContainer);
+        return;
+      }
 
       if (isUserList) {
         // User-list context: use friendships badge (pill style, positioned right)
@@ -715,6 +722,48 @@ async function updateBadgesForFlagsChange() {
   console.log('[Threads Extractor] Updated all badges for flags change');
 }
 
+/**
+ * Re-evaluate hide filter for all known posts. Used when settings change.
+ * Unhides everything first, then re-hides whatever now matches the filter.
+ */
+async function reapplyHideFilter() {
+  // Reset: un-hide everything we previously hid
+  unhideAllContainers();
+
+  const settings = await getFilterSettings();
+
+  // For posts: walk existing badges and hide their post containers if needed
+  const allBadges = document.querySelectorAll(
+    '.threads-profile-info-badge, .threads-friendships-location-badge'
+  );
+
+  for (const badge of allBadges) {
+    let username = null;
+    const ancestor = badge.closest('[role="article"]') || badge.parentElement?.closest('div');
+    if (ancestor) {
+      const profileLink = ancestor.querySelector('a[href^="/@"]');
+      if (profileLink) {
+        const href = profileLink.getAttribute('href');
+        const match = href.match(/^\/@([\w.]+)/);
+        if (match) username = match[1];
+      }
+    }
+    if (!username || !profileCache.has(username)) continue;
+
+    const profileInfo = profileCache.get(username);
+    if (await shouldHideProfile(profileInfo, settings)) {
+      // Prefer the formal post container; fall back to closest pressable/article ancestor
+      const target =
+        findPostContainer(badge) ||
+        badge.closest('[data-pressable-container="true"]') ||
+        badge.closest('[role="article"]');
+      if (target) hideContainer(target);
+    }
+  }
+
+  console.log('[Threads Extractor] Re-applied hide filter');
+}
+
 // Listen for setting changes from popup
 browserAPI.runtime.onMessage.addListener((message) => {
   if (message.type === 'AUTO_QUERY_CHANGED') {
@@ -734,6 +783,11 @@ browserAPI.runtime.onMessage.addListener((message) => {
     console.log('[Threads Extractor] Custom emojis changed, refreshing badges');
     // Update all existing badges to show new custom emojis
     updateBadgesForFlagsChange();
+  } else if (message.type === 'HIDE_FILTER_CHANGED') {
+    console.log('[Threads Extractor] Hide filter changed, reapplying');
+    reapplyHideFilter();
+    // Also rescan in case new posts can now be hidden as we paginate
+    setTimeout(addFetchButtons, 100);
   }
 });
 

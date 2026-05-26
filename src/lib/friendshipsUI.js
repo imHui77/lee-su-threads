@@ -7,6 +7,7 @@ import { findUsernameContainer } from './domHelpers.js';
 import { isNewUser } from './dateParser.js';
 import { formatLocation } from './locationMapper.js';
 import { fetchProfileByUserId, updateButtonWithFetchResult } from './profileFetcher.js';
+import { shouldHideProfile, hideContainer } from './profileFilter.js';
 
 // Cross-browser compatibility
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
@@ -126,12 +127,20 @@ async function injectLocationBadgeIntoUserRow(username, profileInfo) {
   // Find all links to this user's profile
   const profileLinks = document.querySelectorAll(`a[href="/@${username}"]`);
 
+  const filterHit = await shouldHideProfile(profileInfo);
+
   for (const link of profileLinks) {
     // Navigate up to find the user row container
     let userRow = link;
     for (let i = 0; i < 10 && userRow; i++) {
       // Look for the container that has the username
       if (userRow.querySelector && userRow.textContent.includes(username)) {
+        // If filtered out, hide the whole user row instead of inserting a badge
+        if (filterHit) {
+          hideContainer(userRow);
+          return;
+        }
+
         // Check if we already added a badge
         if (userRow.querySelector('.threads-friendships-location-badge')) {
           return;

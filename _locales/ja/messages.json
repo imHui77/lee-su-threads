@@ -223,5 +223,17 @@
   },
   "clearing": {
     "message": "クリア中..."
+  },
+  "hideNewUsersLabel": {
+    "message": "新規ユーザーを非表示"
+  },
+  "hideLocationTitle": {
+    "message": "クリックしてこの地域の投稿を非表示"
+  },
+  "unhideLocationTitle": {
+    "message": "クリックしてこの地域の投稿を再表示"
+  },
+  "hideLocationAria": {
+    "message": "地域の非表示を切り替え"
   }
 }

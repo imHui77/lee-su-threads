@@ -226,5 +226,17 @@
   },
   "clearing": {
     "message": "清除中..."
+  },
+  "hideNewUsersLabel": {
+    "message": "隱藏新帳號"
+  },
+  "hideLocationTitle": {
+    "message": "點擊以隱藏此地點的貼文"
+  },
+  "unhideLocationTitle": {
+    "message": "點擊以恢復顯示此地點的貼文"
+  },
+  "hideLocationAria": {
+    "message": "切換隱藏地點"
   }
 }

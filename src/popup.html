@@ -237,7 +237,7 @@
 
       .stats {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr;
         gap: 10px;
         margin-bottom: 12px;
         background: linear-gradient(
@@ -756,6 +756,46 @@
         display: none;
       }
 
+      .location-hide-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--bg-overlay-10);
+        opacity: 0.55;
+      }
+
+      .location-hide-btn:hover {
+        background: var(--bg-overlay-20);
+        opacity: 1;
+        transform: scale(1.05);
+      }
+
+      .location-hide-btn.is-active {
+        background: rgba(239, 68, 68, 0.25);
+        opacity: 1;
+      }
+
+      .location-hide-btn.is-active:hover {
+        background: rgba(239, 68, 68, 0.4);
+      }
+
+      .location-stat-item.is-hidden-loc .location-name {
+        text-decoration: line-through;
+        color: var(--text-secondary);
+      }
+
+      .location-stat-item.is-hidden-loc .location-bar-fill {
+        background: var(--text-secondary);
+        opacity: 0.4;
+      }
+
       .btn-reset-emoji:hover {
         background: var(--bg-overlay-20);
         opacity: 1;
@@ -1079,6 +1119,21 @@
                 id="showFlagsToggle"
                 checked
                 aria-label="Toggle country flag display"
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="hideNewUsersLabel">
+            Hide New Users
+          </div>
+          <div class="toggle-group single">
+            <label class="toggle-switch">
+              <input
+                type="checkbox"
+                id="hideNewUsersToggle"
+                aria-label="Toggle hiding posts from new users"
               />
               <span class="toggle-slider"></span>
             </label>

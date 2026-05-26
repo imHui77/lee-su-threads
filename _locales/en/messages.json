@@ -220,5 +220,17 @@
   },
   "clearing": {
     "message": "Clearing..."
+  },
+  "hideNewUsersLabel": {
+    "message": "Hide New Users"
+  },
+  "hideLocationTitle": {
+    "message": "Click to hide posts from this location"
+  },
+  "unhideLocationTitle": {
+    "message": "Click to unhide posts from this location"
+  },
+  "hideLocationAria": {
+    "message": "Toggle hide location"
   }
 }
